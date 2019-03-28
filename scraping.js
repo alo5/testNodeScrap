@@ -7,19 +7,17 @@ let plazavea = require('./markersJson/plazavea.js');
 
 async function scrapingTottus(searchproduct = 'radio', quantity = 15) {
   try {
-    //Puppeteer with headless:true is extremely slow: https://github.com/GoogleChrome/puppeteer/issues/1718
-    //const browser = await puppeteer.launch({args: ["--proxy-server='direct://'", '--proxy-bypass-list=*']})
-const browser = await puppeteer.launch({args: ["--proxy-server='direct://'", '--proxy-bypass-list=*']});
-const page = await browser.newPage();
-await page.setRequestInterception(true);
-page.on('request', (req) => {
-  if(req.resourceType() === 'image' || req.resourceType() === 'stylesheet' || req.resourceType() === 'font'){
-    req.abort();
-  }
-  else {
-    req.continue();
-  }
-});
+    const browser = await puppeteer.launch({args: ["--proxy-server='direct://'", '--proxy-bypass-list=*']});
+    const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if(req.resourceType() === 'image' || req.resourceType() === 'stylesheet' || req.resourceType() === 'font'){
+        req.abort();
+      }
+      else {
+        req.continue();
+      }
+    });
     await page.goto('http://www.tottus.com.pe/tottus/search?Nrpp=' + quantity + '&Ntt=' + searchproduct);
     await page.waitFor(10000);
     let products = await page.evaluate(() =>
@@ -33,12 +31,12 @@ page.on('request', (req) => {
         quantity: product.querySelector("div.caption-bottom-wrapper div.statement").innerText.trim()
       }))
     );
-await browser.close();
-return products;
-} catch (e) {
-  console.log(e);
-  return e;
-}
+    await browser.close();
+    return products;
+  } catch (e) {
+    console.log(e);
+    return e;
+  }
 }
 
 async function scrapingMetro(searchproduct = 'radio', quantity = 15) {
