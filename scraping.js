@@ -1,3 +1,5 @@
+const request = require('request');
+const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const express = require('express');
 const app = express();
@@ -113,7 +115,7 @@ async function scrapingPlazaVea(searchproduct = 'radio', quantity = 15, category
   }
 }
 
-async function scrapGeneral(url, parameters, domfields) {
+async function scrapGeneralPuppeteer(url, parameters, domfields) {
   try {
     const browser = await puppeteer.launch({args: ["--proxy-server='direct://'", '--proxy-bypass-list=*']});
     const page = await browser.newPage();
@@ -162,6 +164,46 @@ async function scrapGeneral(url, parameters, domfields) {
   }
 }
 
+async function scrapGeneralCheerio(url, parameters, domproperties) {
+  let page;
+  let products = [];
+  let rootNode = domproperties['rootNode'];
+  let bodyNodes = domproperties['body'];
+  request('https://api.allorigins.win/get?url=' + encodeURIComponent(url + parameters), (error, response, html) => {
+    if(!error && response.statusCode === 200) {
+      page = cheerio.load(html);
+      console.log(html);
+      console.log(rootNode);
+      page(rootNode).each((i, e) => {
+        console.log(i + " : " + e);
+        let prodObj = {};
+        for (let k in bodyNodes) {
+          if (k == 'id') {
+            if (Array.isArray(bodyNodes[k])) {
+              //prodObj[k] =
+            } else {
+              //prodObj[k] = page(bodyNodes[k], e).attr(bodyNodes[k]);
+            }
+          } else if (k == 'image') {
+            prodObj[k] = page(bodyNodes[k], e).attr('src');
+          } else {
+            if (bodyNodes[k] != '') {
+              prodObj[k] = page(bodyNodes[k], e).text().trim();
+            } else {
+              prodObj[k] = '';
+            }
+          }
+        }
+        products.push(prodObj);
+      });
+      console.log(products);
+      return products;
+    } else {
+      return error;
+    }
+  });
+}
+
 async function startScraping(product = 'radio') {
   let objMarkets = {
     "vea": {
@@ -204,9 +246,9 @@ async function startScrapingGeneral(product = 'radio', quantity = 15) {
   tottus.setQuantity(quantity);
   plazavea.setProduct(product);
   plazavea.setQuantity(quantity);
-  objMarkets.tottus.products = await scrapGeneral(tottus.url, tottus.processParameters(), tottus.domfields);
-  objMarkets.metro.products = await scrapGeneral(metro.url, metro.processParameters(), metro.domfields);
-  objMarkets.vea.products = await scrapGeneral(plazavea.url, plazavea.processParameters(), plazavea.domfields);
+  objMarkets.tottus.products = await scrapGeneralCheerio(tottus.url, tottus.processParameters(), tottus.domfields);
+  objMarkets.metro.products = await scrapGeneralCheerio(metro.url, metro.processParameters(), metro.domfields);
+  objMarkets.vea.products = await scrapGeneralCheerio(plazavea.url, plazavea.processParameters(), plazavea.domfields);
   return objMarkets;
 }
 
@@ -216,7 +258,8 @@ app.get('/scrap/', (req, res) => {
   });
 });
 
-app.listen(8000, '0.0.0.0', () => {
-  console.log('Server listening on port 8000!')
+let port = 8101;
+app.listen(port, '0.0.0.0', () => {
+  console.log('Server listening on port ' + port + '!')
 });
 
